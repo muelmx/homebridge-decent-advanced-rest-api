@@ -69,7 +69,17 @@ export class DE1DeviceBridge implements DeviceBridge {
     return new Promise((resolve, reject) => {
       const req = http
         .request(options, (res) => {
+          let body = '';
+          res.on('data', (chunk) => {
+            body += chunk;
+          });
           res.on('end', () => {
+            this.log.debug('switch invoked', body);
+            try {
+              this.parseStatus(JSON.parse(body));
+            } catch (error) {
+              return reject(error);
+            }
             return resolve();
           });
         })
@@ -85,13 +95,17 @@ export class DE1DeviceBridge implements DeviceBridge {
 
   private startUpdateRoutine() {
     setInterval(async () => {
-      try {
-        this.parseStatus(await this.queryEndpoint(statusUrl(this.host)));
-        this.parseDetailState(await this.queryEndpoint(detailsUrl(this.host)));
-      } catch (error) {
-        this.log.debug('error parsing de1 response', error);
-      }
+      this.update();
     }, this.pullInterval ?? defaultInterval);
+  }
+
+  private async update() {
+    try {
+      this.parseStatus(await this.queryEndpoint(statusUrl(this.host)));
+      this.parseDetailState(await this.queryEndpoint(detailsUrl(this.host)));
+    } catch (error) {
+      this.log.debug('error parsing de1 response', error);
+    }
   }
 
   private queryEndpoint(url: string): Promise<unknown> {
