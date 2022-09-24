@@ -2,7 +2,7 @@
   "private": false,
   "displayName": "Decent Advanced Rest Api",
   "name": "homebridge-decent-advanced-rest-api",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Homebridge plugin for decent advanced rest api",
   "license": "Apache-2.0",
   "repository": {
