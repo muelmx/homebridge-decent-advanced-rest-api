@@ -1,5 +1,5 @@
 import { Service, PlatformAccessory, CharacteristicValue } from 'homebridge';
-import { DeviceBridge } from './deviceBridge';
+import { DeviceService } from './deviceService';
 
 import { DecentHomeBridgePlatform } from './platform';
 
@@ -9,7 +9,7 @@ export class MachineSwitchAccessory {
   constructor(
     private readonly platform: DecentHomeBridgePlatform,
     private readonly accessory: PlatformAccessory,
-    private readonly dataService: DeviceBridge,
+    private readonly deviceBridge: DeviceService,
   ) {
     this.accessory
       .getService(this.platform.Service.AccessoryInformation)!
@@ -35,7 +35,7 @@ export class MachineSwitchAccessory {
   }
 
   async getState(): Promise<CharacteristicValue> {
-    const val = this.dataService.state.isOn;
+    const val = this.deviceBridge.state.isOn;
     if (val === undefined) {
       throw new this.platform.api.hap.HapStatusError(
         this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE,
@@ -46,7 +46,7 @@ export class MachineSwitchAccessory {
 
   async setState(value: CharacteristicValue) {
     try {
-      await this.dataService.setStatus(value as boolean);
+      await this.deviceBridge.setStatus(value as boolean);
     } catch (error) {
       this.platform.log.warn('error switch', error);
     }

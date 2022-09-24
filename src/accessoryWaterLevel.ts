@@ -1,5 +1,5 @@
 import { Service, PlatformAccessory, CharacteristicValue } from 'homebridge';
-import { DeviceBridge } from './deviceBridge';
+import { DeviceService } from './deviceService';
 
 import { DecentHomeBridgePlatform } from './platform';
 
@@ -11,7 +11,7 @@ export class WaterLevelAccessory {
   constructor(
     private readonly platform: DecentHomeBridgePlatform,
     private readonly accessory: PlatformAccessory,
-    private readonly dataService: DeviceBridge,
+    private readonly deviceBridge: DeviceService,
     private readonly waterTankSize?: number,
   ) {
     this.accessory
@@ -37,7 +37,7 @@ export class WaterLevelAccessory {
   }
 
   async getWaterLevel(): Promise<CharacteristicValue> {
-    const val = this.dataService.state.waterLevel;
+    const val = this.deviceBridge.state.waterLevel;
     if (val === undefined) {
       throw new this.platform.api.hap.HapStatusError(
         this.platform.api.hap.HAPStatus.NOT_ALLOWED_IN_CURRENT_STATE,

@@ -1,6 +1,6 @@
 import { Service, PlatformAccessory, CharacteristicValue } from 'homebridge';
 import { DeviceState } from './config';
-import { DeviceBridge } from './deviceBridge';
+import { DeviceService } from './deviceService';
 
 import { DecentHomeBridgePlatform } from './platform';
 
@@ -10,7 +10,7 @@ export class GenericTemperatureAccessory {
   constructor(
     private readonly platform: DecentHomeBridgePlatform,
     private readonly accessory: PlatformAccessory,
-    private readonly dataService: DeviceBridge,
+    private readonly deviceBridge: DeviceService,
     private readonly extractor: (state: DeviceState) => number | undefined,
     private readonly temperatureIdentifier: string,
   ) {
@@ -40,7 +40,7 @@ export class GenericTemperatureAccessory {
   }
 
   async getTemperature(): Promise<CharacteristicValue> {
-    const temp = this.extractor(this.dataService.state);
+    const temp = this.extractor(this.deviceBridge.state);
     if (temp === undefined) {
       throw new this.platform.api.hap.HapStatusError(
         this.platform.api.hap.HAPStatus.NOT_ALLOWED_IN_CURRENT_STATE,

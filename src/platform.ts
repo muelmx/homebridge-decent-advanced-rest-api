@@ -9,7 +9,7 @@ import {
 } from 'homebridge';
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
-import { DE1DeviceBridge } from './de1DeviceBridge';
+import { DE1DeviceService } from './de1DeviceService';
 import { GenericTemperatureAccessory } from './accessoryTemperature';
 import { WaterLevelAccessory } from './accessoryWaterLevel';
 import { DeviceConfig, DeviceState } from './config';
@@ -67,7 +67,7 @@ export class DecentHomeBridgePlatform implements DynamicPlatformPlugin {
       // number or MAC address
       const uuid = this.api.hap.uuid.generate(device.name);
 
-      const dataService = new DE1DeviceBridge(
+      const deviceService = new DE1DeviceService(
         this.log,
         device.host,
         this.config.pullInterval,
@@ -75,7 +75,7 @@ export class DecentHomeBridgePlatform implements DynamicPlatformPlugin {
       );
 
       this.addGenericTemperature(
-        dataService,
+        deviceService,
         uuid,
         'Mix',
         (state) => state.mixTemperature,
@@ -83,7 +83,7 @@ export class DecentHomeBridgePlatform implements DynamicPlatformPlugin {
       );
 
       this.addGenericTemperature(
-        dataService,
+        deviceService,
         uuid,
         'Steam',
         (state) => state.steamHeaterTemperature,
@@ -91,21 +91,21 @@ export class DecentHomeBridgePlatform implements DynamicPlatformPlugin {
       );
 
       this.addGenericTemperature(
-        dataService,
+        deviceService,
         uuid,
         'Head',
         (state) => state.headTemperature,
         device,
       );
 
-      this.addWaterLevel(dataService, uuid, device);
+      this.addWaterLevel(deviceService, uuid, device);
 
-      this.addSwitch(dataService, uuid, device);
+      this.addSwitch(deviceService, uuid, device);
     }
   }
 
   addGenericTemperature(
-    dataService: DE1DeviceBridge,
+    dataService: DE1DeviceService,
     uuid: string,
     key: string,
     accessor: (state: DeviceState) => number | undefined,
@@ -148,7 +148,7 @@ export class DecentHomeBridgePlatform implements DynamicPlatformPlugin {
   }
 
   addWaterLevel(
-    dataService: DE1DeviceBridge,
+    dataService: DE1DeviceService,
     uuid: string,
     device: DeviceConfig,
   ) {
@@ -182,7 +182,7 @@ export class DecentHomeBridgePlatform implements DynamicPlatformPlugin {
     }
   }
 
-  addSwitch(dataService: DE1DeviceBridge, uuid: string, device: DeviceConfig) {
+  addSwitch(dataService: DE1DeviceService, uuid: string, device: DeviceConfig) {
     const specificUuid = this.api.hap.uuid.generate(`${uuid}-switch`);
     const existing = this.accessories.find(
       (accessory) => accessory.UUID === specificUuid,
