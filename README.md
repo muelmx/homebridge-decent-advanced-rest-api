@@ -1,4 +1,4 @@
-# Decent DE1 Homebridge Plugin
+# Decent DE1 Homebridge Advanced Rest Api Plugin
 
 made to work with https://github.com/randomcoffeesnob/decent-advanced-rest-api
 
