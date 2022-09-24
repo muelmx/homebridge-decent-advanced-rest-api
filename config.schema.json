@@ -1,15 +1,54 @@
 {
-  "pluginAlias": "ExampleHomebridgePlugin",
+  "pluginAlias": "decent-de1",
   "pluginType": "platform",
   "singular": true,
   "schema": {
     "type": "object",
     "properties": {
-      "name": {
-        "title": "Name",
-        "type": "string",
-        "required": true,
-        "default": "Example Dynamic Platform"
+      "machines": {
+        "type": "array",
+        "items": {
+          "title": "Machines",
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Name",
+              "type": "string",
+              "required": true,
+              "default": "DE1 Pro"
+            },
+            "host": {
+              "title": "Hostname / IP of tablet including Port",
+              "type": "string",
+              "required": true,
+              "default": "192.168.1.2:8888"
+            },
+            "waterTankSize": {
+              "title": "Water Tank Size in mL",
+              "type": "number",
+              "required": false,
+              "default": 1500,
+              "minimum": 0,
+              "maximum": 10000
+            }
+          }
+        }
+      },
+      "pullInterval": {
+        "title": "Pull Interval in ms",
+        "type": "number",
+        "required": false,
+        "default": 1000,
+        "minimum": 100,
+        "maximum": 60000
+      },
+      "timeout": {
+        "title": "Timeout",
+        "type": "number",
+        "required": false,
+        "default": 200,
+        "minimum": 50,
+        "maximum": 10000
       }
     }
   }

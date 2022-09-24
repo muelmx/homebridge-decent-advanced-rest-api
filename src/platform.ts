@@ -1,16 +1,24 @@
-import { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service, Characteristic } from 'homebridge';
+import {
+  API,
+  DynamicPlatformPlugin,
+  Logger,
+  PlatformAccessory,
+  PlatformConfig,
+  Service,
+  Characteristic,
+} from 'homebridge';
 
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
-import { ExamplePlatformAccessory } from './platformAccessory';
+import { DE1DeviceBridge } from './de1DeviceBridge';
+import { GenericTemperatureAccessory } from './accessoryTemperature';
+import { WaterLevelAccessory } from './accessoryWaterLevel';
+import { DeviceConfig, DeviceState } from './config';
+import { MachineSwitchAccessory } from './accessorySwitch';
 
-/**
- * HomebridgePlatform
- * This class is the main constructor for your plugin, this is where you should
- * parse the user config and discover/register accessories with Homebridge.
- */
-export class ExampleHomebridgePlatform implements DynamicPlatformPlugin {
+export class DecentHomeBridgePlatform implements DynamicPlatformPlugin {
   public readonly Service: typeof Service = this.api.hap.Service;
-  public readonly Characteristic: typeof Characteristic = this.api.hap.Characteristic;
+  public readonly Characteristic: typeof Characteristic =
+    this.api.hap.Characteristic;
 
   // this is used to track restored cached accessories
   public readonly accessories: PlatformAccessory[] = [];
@@ -50,67 +58,152 @@ export class ExampleHomebridgePlatform implements DynamicPlatformPlugin {
    * must not be registered again to prevent "duplicate UUID" errors.
    */
   discoverDevices() {
-
-    // EXAMPLE ONLY
-    // A real plugin you would discover accessories from the local network, cloud services
-    // or a user-defined array in the platform config.
-    const exampleDevices = [
-      {
-        exampleUniqueId: 'ABCD',
-        exampleDisplayName: 'Bedroom',
-      },
-      {
-        exampleUniqueId: 'EFGH',
-        exampleDisplayName: 'Kitchen',
-      },
-    ];
+    const machines = this.config.machines as DeviceConfig[];
 
     // loop over the discovered devices and register each one if it has not already been registered
-    for (const device of exampleDevices) {
-
+    for (const device of machines) {
       // generate a unique id for the accessory this should be generated from
       // something globally unique, but constant, for example, the device serial
       // number or MAC address
-      const uuid = this.api.hap.uuid.generate(device.exampleUniqueId);
+      const uuid = this.api.hap.uuid.generate(device.name);
 
-      // see if an accessory with the same uuid has already been registered and restored from
-      // the cached devices we stored in the `configureAccessory` method above
-      const existingAccessory = this.accessories.find(accessory => accessory.UUID === uuid);
+      const dataService = new DE1DeviceBridge(
+        this.log,
+        device.host,
+        this.config.pullInterval,
+        this.config.timeout,
+      );
 
-      if (existingAccessory) {
-        // the accessory already exists
-        this.log.info('Restoring existing accessory from cache:', existingAccessory.displayName);
+      this.addGenericTemperature(
+        dataService,
+        uuid,
+        'Mix',
+        (state) => state.mixTemperature,
+        device,
+      );
 
-        // if you need to update the accessory.context then you should run `api.updatePlatformAccessories`. eg.:
-        // existingAccessory.context.device = device;
-        // this.api.updatePlatformAccessories([existingAccessory]);
+      this.addGenericTemperature(
+        dataService,
+        uuid,
+        'Steam',
+        (state) => state.steamHeaterTemperature,
+        device,
+      );
 
-        // create the accessory handler for the restored accessory
-        // this is imported from `platformAccessory.ts`
-        new ExamplePlatformAccessory(this, existingAccessory);
+      this.addGenericTemperature(
+        dataService,
+        uuid,
+        'Head',
+        (state) => state.headTemperature,
+        device,
+      );
 
-        // it is possible to remove platform accessories at any time using `api.unregisterPlatformAccessories`, eg.:
-        // remove platform accessories when no longer present
-        // this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [existingAccessory]);
-        // this.log.info('Removing existing accessory from cache:', existingAccessory.displayName);
-      } else {
-        // the accessory does not yet exist, so we need to create it
-        this.log.info('Adding new accessory:', device.exampleDisplayName);
+      this.addWaterLevel(dataService, uuid, device);
 
-        // create a new accessory
-        const accessory = new this.api.platformAccessory(device.exampleDisplayName, uuid);
+      this.addSwitch(dataService, uuid, device);
+    }
+  }
 
-        // store a copy of the device object in the `accessory.context`
-        // the `context` property can be used to store any data about the accessory you may need
-        accessory.context.device = device;
+  addGenericTemperature(
+    dataService: DE1DeviceBridge,
+    uuid: string,
+    key: string,
+    accessor: (state: DeviceState) => number | undefined,
+    device: DeviceConfig,
+  ) {
+    const specificUuid = this.api.hap.uuid.generate(`${uuid}-${key}`);
+    const existingMix = this.accessories.find(
+      (accessory) => accessory.UUID === specificUuid,
+    );
+    if (existingMix) {
+      this.log.info(
+        'Restoring existing accessory from cache:',
+        existingMix.displayName,
+      );
+      new GenericTemperatureAccessory(
+        this,
+        existingMix,
+        dataService,
+        accessor,
+        key,
+      );
+    } else {
+      this.log.info('Adding new accessory:', device.name, key);
+      const mixTemp = new this.api.platformAccessory(
+        `${device.name} ${key} Temperature`,
+        specificUuid,
+      );
+      mixTemp.context.device = device;
+      new GenericTemperatureAccessory(
+        this,
+        mixTemp,
+        dataService,
+        accessor,
+        key,
+      );
+      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [
+        mixTemp,
+      ]);
+    }
+  }
 
-        // create the accessory handler for the newly create accessory
-        // this is imported from `platformAccessory.ts`
-        new ExamplePlatformAccessory(this, accessory);
+  addWaterLevel(
+    dataService: DE1DeviceBridge,
+    uuid: string,
+    device: DeviceConfig,
+  ) {
+    const specificUuid = this.api.hap.uuid.generate(`${uuid}-water`);
+    const existing = this.accessories.find(
+      (accessory) => accessory.UUID === specificUuid,
+    );
+    if (existing) {
+      this.log.info(
+        'Restoring existing accessory from cache:',
+        existing.displayName,
+      );
+      new WaterLevelAccessory(
+        this,
+        existing,
+        dataService,
+        device.waterTankSize,
+      );
+    } else {
+      // the accessory does not yet exist, so we need to create it
+      this.log.info('Adding new accessory:', device.name, 'Water Level');
+      const mixTemp = new this.api.platformAccessory(
+        `${device.name} Water Level`,
+        specificUuid,
+      );
+      mixTemp.context.device = device;
+      new WaterLevelAccessory(this, mixTemp, dataService, device.waterTankSize);
+      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [
+        mixTemp,
+      ]);
+    }
+  }
 
-        // link the accessory to your platform
-        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
-      }
+  addSwitch(dataService: DE1DeviceBridge, uuid: string, device: DeviceConfig) {
+    const specificUuid = this.api.hap.uuid.generate(`${uuid}-switch`);
+    const existing = this.accessories.find(
+      (accessory) => accessory.UUID === specificUuid,
+    );
+    if (existing) {
+      this.log.info(
+        'Restoring existing accessory from cache:',
+        existing.displayName,
+      );
+      new MachineSwitchAccessory(this, existing, dataService);
+    } else {
+      this.log.info('Adding new accessory:', device.name, 'Switch');
+      const mixTemp = new this.api.platformAccessory(
+        `${device.name}`,
+        specificUuid,
+      );
+      mixTemp.context.device = device;
+      new MachineSwitchAccessory(this, mixTemp, dataService);
+      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [
+        mixTemp,
+      ]);
     }
   }
 }
