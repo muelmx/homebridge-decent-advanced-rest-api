@@ -1,4 +1,4 @@
-import { Service, PlatformAccessory, CharacteristicValue } from 'homebridge';
+import { Service, PlatformAccessory, CharacteristicValue, HapStatusError } from 'homebridge';
 import { DeviceState } from './config';
 import { DeviceService } from './deviceService';
 
@@ -16,10 +16,7 @@ export class GenericTemperatureAccessory {
   ) {
     this.accessory
       .getService(this.platform.Service.AccessoryInformation)!
-      .setCharacteristic(
-        this.platform.Characteristic.Manufacturer,
-        'Decent',
-      )
+      .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Decent')
       .setCharacteristic(
         this.platform.Characteristic.Model,
         `Decent DE1 ${this.temperatureIdentifier}`,
@@ -37,10 +34,26 @@ export class GenericTemperatureAccessory {
     this.service
       .getCharacteristic(this.platform.Characteristic.CurrentTemperature)
       .onGet(this.getTemperature.bind(this));
+
+    deviceBridge.onUpdate((state) => {
+      const characteristic = this.service.getCharacteristic(
+        this.platform.Characteristic.CurrentTemperature,
+      );
+      try {
+        const val = this.extractValueFromState(state);
+        characteristic.updateValue(val);
+      } catch (error) {
+        characteristic.updateValue(error as Error | HapStatusError);
+      }
+    });
   }
 
   async getTemperature(): Promise<CharacteristicValue> {
-    const temp = this.extractor(this.deviceBridge.state);
+    return this.extractValueFromState(this.deviceBridge.state);
+  }
+
+  private extractValueFromState(state: DeviceState): CharacteristicValue {
+    const temp = this.extractor(state);
     if (temp === undefined) {
       throw new this.platform.api.hap.HapStatusError(
         this.platform.api.hap.HAPStatus.NOT_ALLOWED_IN_CURRENT_STATE,

@@ -1,4 +1,5 @@
 import { Logger } from 'homebridge';
+import { EventEmitter } from 'node:events';
 import * as http from 'http';
 import { DeviceState } from './config';
 import { DeviceService } from './deviceService';
@@ -35,6 +36,7 @@ const defaultInterval = 1000;
 const defaultTimeout = 200;
 
 export class DE1DeviceService implements DeviceService {
+  private readonly emitter = new EventEmitter();
   private intState: DeviceState = {
     ...invalidState,
   };
@@ -48,8 +50,17 @@ export class DE1DeviceService implements DeviceService {
     this.startUpdateRoutine();
   }
 
+  onUpdate(cb: (state: DeviceState) => void) {
+    this.emitter.on('update', cb);
+  }
+
   public get state(): DeviceState {
     return this.intState;
+  }
+
+  private set state(value: DeviceState) {
+    this.intState = value;
+    this.emitter.emit('update', this.state);
   }
 
   public setStatus(active: boolean): Promise<void> {
@@ -137,7 +148,10 @@ export class DE1DeviceService implements DeviceService {
   private parseStatus(data: unknown) {
     try {
       const onResponseProto = data as DE1StatusResponse;
-      this.state.isOn = onResponseProto.is_active;
+      this.state = {
+        ...this.state,
+        isOn: onResponseProto.is_active,
+      };
     } catch (error) {
       this.log.warn('error parsing machine data', error);
       throw error;
@@ -147,13 +161,15 @@ export class DE1DeviceService implements DeviceService {
   private parseDetailState(data: unknown) {
     try {
       const onResponseProto = data as DE1DetailsResponse;
-      this.state.headTemperature = onResponseProto.head_temperature;
-      this.state.steamHeaterTemperature =
-        onResponseProto.steam_heater_temperature;
-      this.state.mixTemperature = onResponseProto.mix_temperature;
-      this.state.waterLevel = onResponseProto.water_level
-        ?.match(extractFloatRegex)
-        ?.map((v) => parseFloat(v))[0];
+      this.state = {
+        ...this.state,
+        headTemperature: onResponseProto.head_temperature,
+        steamHeaterTemperature: onResponseProto.steam_heater_temperature,
+        mixTemperature: onResponseProto.mix_temperature,
+        waterLevel: onResponseProto.water_level
+          ?.match(extractFloatRegex)
+          ?.map((v) => parseFloat(v))[0],
+      };
     } catch (error) {
       this.log.warn('error parsing machine data', error);
       throw error;
@@ -161,8 +177,6 @@ export class DE1DeviceService implements DeviceService {
   }
 
   private invalidateState() {
-    this.intState = {
-      ...invalidState,
-    };
+    this.state = { ...invalidState };
   }
 }

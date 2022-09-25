@@ -1,4 +1,5 @@
-import { Service, PlatformAccessory, CharacteristicValue } from 'homebridge';
+import { Service, PlatformAccessory, CharacteristicValue, HapStatusError } from 'homebridge';
+import { DeviceState } from './config';
 import { DeviceService } from './deviceService';
 
 import { DecentHomeBridgePlatform } from './platform';
@@ -32,10 +33,26 @@ export class MachineSwitchAccessory {
       .getCharacteristic(this.platform.Characteristic.On)
       .onGet(this.getState.bind(this))
       .onSet(this.setState.bind(this));
+
+    deviceBridge.onUpdate((state) => {
+      const characteristic = this.service.getCharacteristic(
+        this.platform.Characteristic.On,
+      );
+      try {
+        const val = this.extractValueFromState(state);
+        characteristic.updateValue(val);
+      } catch (error) {
+        characteristic.updateValue(error as Error | HapStatusError);
+      }
+    });
   }
 
   async getState(): Promise<CharacteristicValue> {
-    const val = this.deviceBridge.state.isOn;
+    return this.extractValueFromState(this.deviceBridge.state);
+  }
+
+  private extractValueFromState(state: DeviceState): CharacteristicValue {
+    const val = state.isOn;
     if (val === undefined) {
       throw new this.platform.api.hap.HapStatusError(
         this.platform.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE,
