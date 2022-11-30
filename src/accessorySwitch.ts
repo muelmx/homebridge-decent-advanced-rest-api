@@ -26,7 +26,7 @@ export class MachineSwitchAccessory {
       this.accessory.addService(this.platform.Service.Switch);
     this.service.setCharacteristic(
       this.platform.Characteristic.Name,
-      accessory.context.device.exampleDisplayName,
+      accessory.context.device.name,
     );
 
     this.service

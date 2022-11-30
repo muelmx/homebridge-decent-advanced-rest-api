@@ -24,12 +24,36 @@
               "default": "192.168.1.2:8888"
             },
             "waterTankSize": {
-              "title": "Water Tank Size in mL",
+              "title": "Water Tank Size in mL, adapt to match your filling behavior",
               "type": "number",
               "required": false,
               "default": 1500,
               "minimum": 0,
               "maximum": 10000
+            },
+            "suppressHeadTemperature": {
+              "title": "Suppress head temperature sensor from being exposed to HomeKit",
+              "type": "boolean",
+              "required": false,
+              "default": false
+            },
+            "suppressSteamHeaterTemperature": {
+              "title": "Suppress steam heater temperature sensor from being exposed to HomeKit",
+              "type": "boolean",
+              "required": false,
+              "default": false
+            },
+            "suppressMixTemperature": {
+              "title": "Suppress mix temperature sensor from being exposed to HomeKit",
+              "type": "boolean",
+              "required": false,
+              "default": false
+            },
+            "suppressWaterLevel": {
+              "title": "Suppress water level sensor from being exposed to HomeKit",
+              "type": "boolean",
+              "required": false,
+              "default": false
             }
           }
         }
