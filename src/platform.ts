@@ -66,7 +66,6 @@ export class DecentHomeBridgePlatform implements DynamicPlatformPlugin {
       // something globally unique, but constant, for example, the device serial
       // number or MAC address
       const uuid = this.api.hap.uuid.generate(device.name);
-
       const deviceService = new DE1DeviceService(
         this.log,
         device.host,
@@ -74,125 +73,168 @@ export class DecentHomeBridgePlatform implements DynamicPlatformPlugin {
         this.config.timeout,
       );
 
-      this.addGenericTemperature(
+      this.setupGenericTemperature(
         deviceService,
         uuid,
         'Mix',
         (state) => state.mixTemperature,
         device,
+        device.suppressMixTemperature,
       );
 
-      this.addGenericTemperature(
+      this.setupGenericTemperature(
         deviceService,
         uuid,
         'Steam',
         (state) => state.steamHeaterTemperature,
         device,
+        device.suppressSteamHeaterTemperature,
       );
 
-      this.addGenericTemperature(
+      this.setupGenericTemperature(
         deviceService,
         uuid,
         'Head',
         (state) => state.headTemperature,
         device,
+        device.suppressHeadTemperature,
       );
 
-      this.addWaterLevel(deviceService, uuid, device);
+      this.setupWaterLevel(
+        deviceService,
+        uuid,
+        device,
+        device.suppressWaterLevel,
+      );
 
-      this.addSwitch(deviceService, uuid, device);
+      this.setupSwitch(deviceService, uuid, device);
     }
   }
 
-  addGenericTemperature(
+  setupGenericTemperature(
     dataService: DE1DeviceService,
     uuid: string,
     key: string,
     accessor: (state: DeviceState) => number | undefined,
     device: DeviceConfig,
+    suppress?: boolean,
   ) {
     const specificUuid = this.api.hap.uuid.generate(`${uuid}-${key}`);
-    const existingMix = this.accessories.find(
+    const existingAccessory = this.accessories.find(
       (accessory) => accessory.UUID === specificUuid,
     );
-    if (existingMix) {
+    if (existingAccessory && suppress) {
+      this.log.info(
+        'Removing existing accessory due to suppression:',
+        existingAccessory.displayName,
+      );
+      this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [
+        existingAccessory,
+      ]);
+      return;
+    }
+    if (suppress) {
+      return;
+    }
+    if (existingAccessory) {
       this.log.info(
         'Restoring existing accessory from cache:',
-        existingMix.displayName,
+        existingAccessory.displayName,
       );
       new GenericTemperatureAccessory(
         this,
-        existingMix,
+        existingAccessory,
         dataService,
         accessor,
         key,
       );
-    } else {
-      this.log.info('Adding new accessory:', device.name, key);
-      const mixTemp = new this.api.platformAccessory(
-        `${device.name} ${key} Temperature`,
-        specificUuid,
-      );
-      mixTemp.context.device = device;
-      new GenericTemperatureAccessory(
-        this,
-        mixTemp,
-        dataService,
-        accessor,
-        key,
-      );
-      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [
-        mixTemp,
-      ]);
+      return;
     }
+    this.log.info('Adding new accessory:', device.name, key);
+    const mixTemp = new this.api.platformAccessory(
+      `${device.name} ${key} Temperature`,
+      specificUuid,
+    );
+    mixTemp.context.device = device;
+    new GenericTemperatureAccessory(this, mixTemp, dataService, accessor, key);
+    this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [mixTemp]);
   }
 
-  addWaterLevel(
+  setupWaterLevel(
     dataService: DE1DeviceService,
     uuid: string,
     device: DeviceConfig,
+    suppress?: boolean,
   ) {
     const specificUuid = this.api.hap.uuid.generate(`${uuid}-water`);
-    const existing = this.accessories.find(
+    const existingAccessory = this.accessories.find(
       (accessory) => accessory.UUID === specificUuid,
     );
-    if (existing) {
+    if (existingAccessory && suppress) {
+      this.log.info(
+        'Removing existing accessory due to suppression:',
+        existingAccessory.displayName,
+      );
+      this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [
+        existingAccessory,
+      ]);
+      return;
+    }
+    if (suppress) {
+      return;
+    }
+    if (existingAccessory) {
       this.log.info(
         'Restoring existing accessory from cache:',
-        existing.displayName,
+        existingAccessory.displayName,
       );
       new WaterLevelAccessory(
         this,
-        existing,
+        existingAccessory,
         dataService,
         device.waterTankSize,
       );
-    } else {
-      // the accessory does not yet exist, so we need to create it
-      this.log.info('Adding new accessory:', device.name, 'Water Level');
-      const mixTemp = new this.api.platformAccessory(
-        `${device.name} Water Level`,
-        specificUuid,
-      );
-      mixTemp.context.device = device;
-      new WaterLevelAccessory(this, mixTemp, dataService, device.waterTankSize);
-      this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [
-        mixTemp,
-      ]);
+      return;
     }
+    this.log.info('Adding new accessory:', device.name, 'Water Level');
+    const mixTemp = new this.api.platformAccessory(
+      `${device.name} Water Level`,
+      specificUuid,
+    );
+    mixTemp.context.device = device;
+    new WaterLevelAccessory(this, mixTemp, dataService, device.waterTankSize);
+    this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [mixTemp]);
   }
 
-  addSwitch(dataService: DE1DeviceService, uuid: string, device: DeviceConfig) {
+  setupSwitch(
+    dataService: DE1DeviceService,
+    uuid: string,
+    device: DeviceConfig,
+    suppress?: boolean,
+  ) {
     const specificUuid = this.api.hap.uuid.generate(`${uuid}-switch`);
-    const existing = this.accessories.find(
+    const existingAccessory = this.accessories.find(
       (accessory) => accessory.UUID === specificUuid,
     );
-    if (existing) {
+    if (existingAccessory && suppress) {
+      this.log.info(
+        'Removing existing accessory due to suppression:',
+        existingAccessory.displayName,
+      );
+      this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [
+        existingAccessory,
+      ]);
+      return;
+    }
+    if (suppress) {
+      return;
+    }
+    if (existingAccessory) {
       this.log.info(
         'Restoring existing accessory from cache:',
-        existing.displayName,
+        existingAccessory.displayName,
       );
-      new MachineSwitchAccessory(this, existing, dataService);
+      new MachineSwitchAccessory(this, existingAccessory, dataService);
     } else {
       this.log.info('Adding new accessory:', device.name, 'Switch');
       const mixTemp = new this.api.platformAccessory(

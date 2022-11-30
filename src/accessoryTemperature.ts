@@ -41,7 +41,7 @@ export class GenericTemperatureAccessory {
       );
       try {
         const val = this.extractValueFromState(state);
-        characteristic.updateValue(val);
+        characteristic.updateValue(this.normalizeValue(val as number));
       } catch (error) {
         characteristic.updateValue(error as Error | HapStatusError);
       }
@@ -59,6 +59,11 @@ export class GenericTemperatureAccessory {
         this.platform.api.hap.HAPStatus.NOT_ALLOWED_IN_CURRENT_STATE,
       );
     }
-    return temp;
+    return this.normalizeValue(temp);
+  }
+
+  private normalizeValue(value: number): number {
+    // respect HomeKit's upper limit
+    return value > 100 ? 100 : value;
   }
 }
